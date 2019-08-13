@@ -209,11 +209,16 @@ We are setting up a CICD pipeline to build and deploy a specific project.  In or
 
 | Name | Description |
 | --- | --- |
-| [Jenkinsfile](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile) | this is the master branch build pipeline |
-| [Jenkinsfile.cicd](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile.cicd) | this is the Pull Request build pipeline |
-| [sonar-project.properties](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/sonar-project.properties) | this is will configure your SonarQube scans |
+| `Jenkinsfile` | this is the master branch build pipeline |
+| `Jenkinsfile.cicd` | this is the Pull Request build pipeline |
+| `sonar-project.properties` | this is will configure your SonarQube scans |
 
-This repository contains skeleton examples, see projects [NR Get Token](https://github.com/bcgov/nr-get-token.git) and [NR Messaging Service Showcase](https://github.com/bcgov/nr-messaging-service-showcase.git) for full examples.
+A very simple example to demonstrate a build and SonarQube analysis (no additional setup, no servers, no deployments), can be found at the [nr-showcase-devops-tools-demo-sq](https://github.com/bcgov/nr-showcase-devops-tools-demo-sq.git) repo.  This can be forked and used to test the Jenkins and SonarQube installation, and to demonstrate the master and pull request jobs.  For instance, the master branch will show Code Smells and duplicates in SonarQube.  In you fork, create a pull request that corrects these and see how the PR Jenkins job kicks off.
+
+For more fully featured pipeline examples, you may refer to the following projects:
+
+* [NR Get Token](https://github.com/bcgov/nr-get-token.git)
+* [NR Messaging Service Showcase](https://github.com/bcgov/nr-messaging-service-showcase.git)
 
 A very simple example to demonstrate a build and SonarQube analysis (no additional setup, no servers, no deployments), can be found at [nr-showcase-devops-tools-demo-sq](https://github.com/bcgov/nr-showcase-devops-tools-demo-sq.git).  This can be forked and used to test the Jenkins and SonarQube installation, and to demonstrate the master and pull request jobs.  For instance, the master branch will show Code Smells and duplicates in SonarQube.  In you fork, create a pull request that corrects these and see how the PR Jenkins job kicks off.
 
