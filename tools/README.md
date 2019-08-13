@@ -25,7 +25,7 @@ You will need a github account and token (preferrably a team shared account) wit
 
 ## Environment Variables
 
-For simplicity sake, we will be setting all our project specific values as environment variables and substitute them into the oc commands.  The following are just examples and will need to be change to your specific projects/namespaces, credentials, etc.
+For simplicity sake, we will be setting all our project specific values as environment variables and substitute them into the oc commands.  The following are just examples and will need to be changed to your specific projects/namespaces, credentials, etc.
 
 ### DevOps Tools Repository
 
