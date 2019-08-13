@@ -13,15 +13,9 @@ As part of the BCDevOps community, each project will have 4 OpenShift namespaces
 
 The tools directory contains all the infrastructure-as-code that we use for devops. Although there are many ways to build/test/deploy, this is the way we are doing it.  We currently rely less on OpenShift to do promotions, and more on our own Continuous Integration/Continuous Delivery ([CI/CD](https://en.wikipedia.org/wiki/CI/CD)).  This affords us more control over the workflow and add tooling as needed.  Currently, the tools in use are: Jenkins and Sonarqube.
 
-## Notes
+## Prerequisites
 
 All of the following instructions and examples are written for a *nix based system.  If you are on Windows, you may have to make some adjustments; particularly around piping `|`, setting environment variables and environment variable substitution. We suggest that Windows users consider using the Windows Subsystem for Linux (WSL) in order to minimize potential conflicts with the local environment. Check the [Microsoft Documentation](https://docs.microsoft.com/en-us/windows/wsl/install-win10) for more information on how to install WSL on your system.
-
-## Environment Variables
-
-For simplicity sake, we will be setting all our project specific values as environment variables and substitute them into the oc commands.  The following are just examples and will need to be change to your specific projects/namespaces, credentials, etc.
-
-### Prerequisites
 
 You should have your 4 OpenShift namespaces (dev, test, prod, tools) and you should have admin access. We assume that whomever is running these commands has admin privileges to the 4 OpenShift projects.
 
@@ -29,17 +23,9 @@ You will need to install the OpenShift command line tools and have them in your 
 
 You will need a github account and token (preferrably a team shared account) with access to your repo: [New Personal Access Token](https://github.com/settings/tokens/new?scopes=repo,read:user,user:email,admin:repo_hook).
 
-#### Login to OpenShift
+## Environment Variables
 
-Login via web console, click your login name at top tight and click "Copy Login Command".  Go to your terminal, go to your project root and paste the copy command.
-
-#### Go to Tools Namespace/Project
-
-Once logged into the OpenShift console, go to your tools project.  Each oc command should use the `-n <NAMESPACE>` option, but being in your tools project is just another safeguard.
-
-```sh
-oc project $tools
-```
+For simplicity sake, we will be setting all our project specific values as environment variables and substitute them into the oc commands.  The following are just examples and will need to be change to your specific projects/namespaces, credentials, etc.
 
 ### DevOps Tools Repository
 
@@ -54,7 +40,7 @@ export tools_repo_raw=https://raw.githubusercontent.com/$tools_repo_owner/$tools
 export templates_url=$tools_repo_raw/tools/jenkins/openshift
 ```
 
-### Namespaces
+### Namespace Enumeration
 
 Configure the 4 environment namespaces for your application.
 
@@ -84,6 +70,18 @@ Configure any remaining application specific details here.
 ```sh
 export app_name=<your application acronym/short name>
 export app_domain=pathfinder.gov.bc.ca
+```
+
+### Login to OpenShift
+
+Once you have all of the environment variables defined, login to Openshift via web console, click your login name at top tight and click "Copy Login Command".  Go to your terminal, go to your project root and paste the copy command.
+
+### Go to Tools Namespace/Project
+
+Once logged into the OpenShift console, go to your tools project.  Each oc command should use the `-n <NAMESPACE>` option, but being in your tools project is just another safeguard.
+
+```sh
+oc project $tools
 ```
 
 ## SonarQube
@@ -131,41 +129,6 @@ chmod +x updatesqadminpw.sh && ./updatesqadminpw.sh
 ```
 
 Go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and log in as `admin` with the new password (it is stored in sonarqube-admin-password secret).
-
-### SonarQube Scanner
-
-In order for static code analysis to happen, there must be a scanner agent that processes the code. This is achieved with the sonar-scanner distribution which can be found [here](https://github.com/SonarSource/sonar-scanner-cli). This is preinstalled on the Jenkins Slave agent.
-
-*Note: At the time of writing, we are currently using version `3.3.0.1492`.*
-
-#### Run scan locally
-
-Should you wish to install and use `sonar-scanner` locally, follow the appropriate instructions depending on your platform.
-
-##### *nix
-
-```sh
-curl -o /tmp/sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
-unzip /tmp/sonar-scanner-cli.zip -d /tmp/sonar-scanner-cli
-mv /tmp/sonar-scanner-cli/sonar-scanner-3.3.0.1492-linux /opt/sonar-scanner
-ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin
-```
-
-##### Windows
-
-*Note: The following assumes you are using the [Chocolatey Package Manager](https://chocolatey.org/). If you are not using Chocolatey, you will need to figure out how to get the client from the [official website](https://www.sonarqube.org/downloads/).*
-
-```powershell
-choco install -y sonarqube-scanner.portable --version 3.3.0.1492
-```
-
-### Static Analysis
-
-Once you have `sonar-scanner` installed, ensure that you are in the same directory as the `sonar-project.properties` file. Then all you need to do is run the following (replace the arguments as necessary):
-
-```sh
-sonar-scanner -Dsonar.host.url='CHANGEURLHERE' -Dsonar.projectKey='CHANGEPROJECTKEYHERE' -Dsonar.projectName='NR Get Token (CHANGEBRANCHNAMEHERE)'
-```
 
 ## Jenkins
 
@@ -269,7 +232,7 @@ The parameters and labels we are providing match up with the BCDevOps pipeline-c
 ##### Master BuildConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -o yaml | oc -n $tools create -f -
 ```
 
 ##### Slave BuildConfig
@@ -277,7 +240,7 @@ oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SU
 Create the slave build config and image stream, and then we add a build trigger for our main jenkins image.  This will allow the slave image to be built automatically when the master Jenkins image is built.  For whatever reason, having the build trigger in the build config template doesn't work - it is stripped out.
 
 ```sh
-oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -o yaml | oc -n $tools create -f -
 
 oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:prod-1.0.0
 ```
@@ -297,13 +260,13 @@ Once the two images are created from the builds of the previous step, you may pr
 ##### Master DeploymentConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -o yaml | oc -n $tools create -f -
 ```
 
 ##### Slave DeploymentConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -o yaml | oc -n $tools create -f -
 ```
 
 Give the process a few minutes. If it is successful, you should be able to get onto your new Jenkins server with the appropriate URL as specified by the route. Assuming you have reached this step and there are no errors, you will have successfully completed the tools deployment and are ready to do development.
@@ -328,11 +291,50 @@ Should you need to tear down the Jenkins and SonarQube, you will want to run the
 
 ```sh
 oc -n $tools delete all,template,secret,cm,pvc,sa,rolebinding --selector app=sonarqube
-oc -n $tools delete secret/sonarqube-admin-password
+oc -n $tools delete secret sonarqube-admin-password
 ```
 
 ### Jenkins Cleanup
 
 ```sh
 oc -n $tools delete all,template,secret,cm,pvc,sa,rolebinding --selector app=jenkins-prod
+```
+
+## Local Development Notes
+
+This section contains notes about how to do certain CI/CD tasks on your local machine.
+
+### SonarQube Scanner
+
+In order for static code analysis to happen, there must be a scanner agent that processes the code. This is achieved with the sonar-scanner distribution which can be found [here](https://github.com/SonarSource/sonar-scanner-cli). This is preinstalled on the Jenkins Slave agent.
+
+*Note: At the time of writing, we are currently using version `3.3.0.1492`.*
+
+#### Run scan locally
+
+Should you wish to install and use `sonar-scanner` locally, follow the appropriate instructions depending on your platform.
+
+##### *nix
+
+```sh
+curl -o /tmp/sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
+unzip /tmp/sonar-scanner-cli.zip -d /tmp/sonar-scanner-cli
+mv /tmp/sonar-scanner-cli/sonar-scanner-3.3.0.1492-linux /opt/sonar-scanner
+ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin
+```
+
+##### Windows
+
+*Note: The following assumes you are using the [Chocolatey Package Manager](https://chocolatey.org/). If you are not using Chocolatey, you will need to figure out how to get the client from the [official website](https://www.sonarqube.org/downloads/).*
+
+```powershell
+choco install -y sonarqube-scanner.portable --version 3.3.0.1492
+```
+
+### Static Analysis
+
+Once you have `sonar-scanner` installed, ensure that you are in the same directory as the `sonar-project.properties` file. Then all you need to do is run the following (replace the arguments as necessary):
+
+```sh
+sonar-scanner -Dsonar.host.url='CHANGEURLHERE' -Dsonar.projectKey='CHANGEPROJECTKEYHERE' -Dsonar.projectName='NR Get Token (CHANGEBRANCHNAMEHERE)'
 ```
