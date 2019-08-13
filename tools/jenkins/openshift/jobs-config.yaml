@@ -1,9 +1,10 @@
 ---
 kind: Template
 apiVersion: v1
+labels:
+  app: jenkins-prod
 metadata:
   name: jenkins
-  creationTimestamp:
 objects:
 - apiVersion: v1
   data:
@@ -13,7 +14,6 @@ objects:
     repo.owner: "${REPO_OWNER}"
   kind: ConfigMap
   metadata:
-    creationTimestamp:
     name: jobs-config
 parameters:
 - name: REPO_OWNER

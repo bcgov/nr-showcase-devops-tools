@@ -2,7 +2,7 @@
 
 The Natural Resources Applications are currently hosted in [RedHat OpenShift](https://www.openshift.com) operated by [BCDevExchange](https://bcdevexchange.org).  We follow the guidelines and principles of the [BCDevOps](https://github.com/BCDevOps) team. We make every attempt to use, or build off the tooling and scripts that BCDevOps (through the [DevHub](https://developer.gov.bc.ca)) provides.
 
-As part of the BCDevOps community, for each project, we will have 4 OpenShift namespaces:
+As part of the BCDevOps community, each project will have 4 OpenShift namespaces allocated:
 
 | Namespace | Description |
 | --- | --- |
@@ -11,43 +11,15 @@ As part of the BCDevOps community, for each project, we will have 4 OpenShift na
 | Prod | production. The user ready application. Promotions to be manually approved. |
 | Tools | devops namespace. |
 
-The tools directory contains all the infrastructure-as-code that we use devops. Although there are many ways to build/test/deploy, this is the way we are doing it.  We currently rely less on OpenShift to do promotions, and more on our own Continuous Integration/Continuous Delivery ([CI/CD](https://en.wikipedia.org/wiki/CI/CD)).  This affords us more control over the workflow and add tooling as needed.  Currently, the tools in use are: Jenkins and Sonarqube.
+The tools directory contains all the infrastructure-as-code that we use for devops. Although there are many ways to build/test/deploy, this is the way we are doing it.  We currently rely less on OpenShift to do promotions, and more on our own Continuous Integration/Continuous Delivery ([CI/CD](https://en.wikipedia.org/wiki/CI/CD)).  This affords us more control over the workflow and add tooling as needed.  Currently, the tools in use are: Jenkins and Sonarqube.
 
-## Jenkins Setup Overview
+## Notes
 
-Uses BCDevOps CICD Jenkins Basic install.  This Jenkins install includes a lot of customization, of particular note is that it will register GitHub webhooks.  [link](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic)
+All of the following instructions and examples are written for a *nix based system.  If you are on Windows, you may have to make some adjustments; particularly around piping `|`, setting environment variables and environment variable substitution. We suggest that Windows users consider using the Windows Subsystem for Linux (WSL) in order to minimize potential conflicts with the local environment. Check the [Microsoft Documentation](https://docs.microsoft.com/en-us/windows/wsl/install-win10) for more information on how to install WSL on your system.
 
-The commands, labels, and naming conventions follow the Pull Request Pipeline principles of the BCDevOps pipeline-cli [link](https://github.com/BCDevOps/pipeline-cli).
+## Environment Variables
 
-The jobs that Jenkins creates and uses will also follow those principles and build out an "environment" for each pull request.
-
-Jenkins will include a slave/builder that can execute Node builds and run Sonarqube scanner.  You can use this as a reference if you need to create additional slaves (ex. python builds).  See [jenkins/openshift/build-slave.yaml](jenkins/openshift/build-slave.yaml).
-
-### Additional Setup Files/Scripts
-
-* **jenkins/docker/contrib/jenkins/configuration**
-
-	We need to make some additional configuration changes to the BCDevOps CICD Jenkins Basic install.  Under the [jenkins/docker/contrib/jenkins/configuration](jenkins/docker/contrib/jenkins/configuration) directory, we have additional start up scripts and configuration overrides.
-
-* **org.jenkinsci.plugins.workflow.libs.GlobalLibraries.xml**
-
-	We pull in [BCDevOps Jenkins Pipeline Shared Lib](https://github.com/BCDevOps/jenkins-pipeline-shared-lib).  This provides us some functions for examining the Git repos and commits. We can use these functions in Jenkinsfiles and other grovy scripts.
-
-* **scriptApproval.xml**
-
-	For our configuration groovy scripts, we need to allow certain jenkins and third party plugin scripts to run.  We override the restrictions here.
-
-* **init.groovy.d/003-create-jobs.groovy**
-
-	This groovy script will build 2 jobs in Jenkins.  One that will build the master branch, and one that will build pull requests.
-
-	To add or change the jobs, this is where you want to go.  The name of this file is important, as it needs to get run *BEFORE* the 003-register-github-webhooks.groovy included in the basic install.  Scripts are run alphabetically.  The jobs need to be created before the github webhooks are created.  Our jobs script will read secrets and configmaps created during this setup; described below.
-
-	These jobs are configured to use [Jenkinsfile](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile) and [Jenkinsfile.cicd](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile.cicd) found at the root of your project repository.  These Jenkinsfiles will make use of the OpenShift ConfigMaps we will create below.
-
-* **init.groovy.d/100-jenkins-config-set-admin-address.groovy**
-
-	This groovy script will update the admin email address.  It is not necessary, but an example of further customization to Jenkins.  If you are swiping this, keep in mind the email address is hardcoded.
+For simplicity sake, we will be setting all our project specific values as environment variables and substitute them into the oc commands.  The following are just examples and will need to be change to your specific projects/namespaces, credentials, etc.
 
 ### Prerequisites
 
@@ -57,32 +29,22 @@ You will need to install the OpenShift command line tools and have them in your 
 
 You will need a github account and token (preferrably a team shared account) with access to your repo: [New Personal Access Token](https://github.com/settings/tokens/new?scopes=repo,read:user,user:email,admin:repo_hook).
 
-### Project Prerequisites
+#### Login to OpenShift
 
-We are setting up a CICD pipeline to build and deploy a specific project.  In order for this to work, there are expectations on those projects.  Currently, each project will require 3 files at the __root__ of the repository.
+Login via web console, click your login name at top tight and click "Copy Login Command".  Go to your terminal, go to your project root and paste the copy command.
 
-| Name | Description |
-| --- | --- |
-| [Jenkinsfile](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile) | this is the master branch build pipeline |
-| [Jenkinsfile.cicd](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile.cicd) | this is the Pull Request build pipeline |
-| [sonar-project.properties](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/sonar-project.properties) | this is will configure your SonarQube scans |
+#### Go to Tools Namespace/Project
 
-This repository contains skeleton examples, see projects [NR Get Token](https://github.com/bcgov/nr-get-token.git) and [NR Messaging Service Showcase](https://github.com/bcgov/nr-messaging-service-showcase.git) for full examples.
+Once logged into the OpenShift console, go to your tools project.  Each oc command should use the `-n <NAMESPACE>` option, but being in your tools project is just another safeguard.
 
-A very simple example to demonstrate a build and SonarQube analysis (no additional setup, no servers, no deployments), can be found at [nr-showcase-devops-tools-demo-sq](https://github.com/bcgov/nr-showcase-devops-tools-demo-sq.git).  This can be forked and used to test the Jenkins and SonarQube installtion, and to demonstrate the master and pull request jobs.  For instance, the master branch will show Code Smells and duplicates in SonarQube.  In you fork, create a pull request that corrects these and see how the PR Jenkins job kicks off.
+```sh
+oc project $tools
+```
 
-## Setup Tools
+### DevOps Tools Repository
 
-The following commands setup up Jenkins and uses this repository and specific OpenShift project namespaces.
-
-#### Notes
-All of these examples are for a *nix based system.  If you are on Windows, you may have to make some adjustments; particularly around piping `|`, setting environment variables and environment variable substitution.
-
-### Environment Variables
-For simplicity sake, we set all our project specific values as environment variables and substitute into the oc commands.  The following are just examples and will need to be change to your specific projects/namespaces, credentials, etc.
-
-#### DevOps Tools Repository
 Configure environment variables to access and run DevOps Tools scripts.
+
 ```sh
 export tools_repo_owner=bcgov
 export tools_repo_name=nr-showcase-devops-tools
@@ -92,8 +54,10 @@ export tools_repo_raw=https://raw.githubusercontent.com/$tools_repo_owner/$tools
 export templates_url=$tools_repo_raw/tools/jenkins/openshift
 ```
 
-#### Namespaces
+### Namespaces
+
 Configure the 4 environment namespaces for your application.
+
 ```sh
 export ns_prefix=<your-namespace-prefix>
 export tools=$ns_prefix-tools
@@ -102,8 +66,9 @@ export test=$ns_prefix-test
 export prod=$ns_prefix-prod
 ```
 
-#### Github Repository and Credentials for Application
-Configure your application repository details.   This is the application that will be built and deployed by the pipeline.
+### Github Repository and Credentials for Application
+
+Configure your application repository details.  This is the application that will be built and deployed by the pipeline.
 
 ```sh
 export gh_username=<github account>
@@ -112,51 +77,13 @@ export repo_owner=<your github account>
 export repo_name=<your application repo>
 ```
 
-#### Application Details
+### Application Details
+
+Configure any remaining application specific details here.
+
 ```sh
 export app_name=<your application acronym/short name>
 export app_domain=pathfinder.gov.bc.ca
-```
-
-### Login to OpenShift
-Login via web console, click your login name at top tight and click "Copy Login Command".  Go to your terminal, go to your project root and paste the copy command.
-
-### Go to Tools Namespace/Project
-Once logged into the OpenShift console, go to your tools project.  Each oc command should use the `-n <NAMESPACE>` option, but being in your tools project is just another safeguard.
-
-```sh
-oc project $tools
-```
-
-### Create Secrets
-The BCDevOps CICD Jenkins Basic install requires a template github secret and a template for the slave.  This will create the secrets named as it requires.
-
-```sh
-oc -n $tools process -f "$templates_url/secrets.yaml" -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password | oc  -n $tools create -f -
-```
-
-### Create ConfigMap for related namespaces
-For our custom jobs scripts and Jenkinsfiles.
-
-```sh
-oc -n $tools process -f "$templates_url/ns-config.yaml" -p DEV=$dev -p TEST=$test -p PROD=$prod -p TOOLS=$tools | oc  -n $tools create -f -
-```
-
-### Create ConfigMap for the application
-For our custom jobs scripts and Jenkinsfiles.
-
-```sh
-oc -n $tools process -f "$templates_url/jobs-config.yaml" -p REPO_OWNER=$repo_owner -p REPO_NAME=$repo_name -p APP_NAME=$app_name -p APP_DOMAIN=$app_domain | oc -n $tools create -f -
-```
-
-#### Add Service Account Access to other Projects
-
-This is required in order to allow Jenkins to have the RBAC permissions to handle deployments in other namespaces.
-
-```sh
-oc -n $dev policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
-oc -n $test policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
-oc -n $prod policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
 ```
 
 ## SonarQube
@@ -165,7 +92,7 @@ SonarQube should be installed and configured first, as the Jenkins will run the 
 
 SonarQube is a static analysis tool which assists with improving and maintaining code quality. For this tool to work, you will need the SonarQube server, as well as an agent that runs the sonar-scanner (this can be local or in Jenkins).
 
-### SonarQube Server
+### SonarQube Server Setup
 
 To deploy a SonarQube server instance to our tools project we simply leverage the prebuilt server image provided by the BCDevOps organization found on the [BCDevOps SonarQube repository](https://github.com/BCDevOps/sonarqube).
 
@@ -183,7 +110,7 @@ Deploying the database is done with the following:
 oc -n $tools new-app -f https://raw.githubusercontent.com/BCDevOps/sonarqube/bc80961d75eed66ec70ca022a6444963341fb39f/sonarqube-postgresql-template.yaml --param=SONARQUBE_VERSION=6.7.5
 ```
 
-Let the SonarQube pods spin up, you can then go to https://sonarqube-<$tools>.pathfinder.gov.bc.ca and watch until SonarQube is ready.  Now you can set the admin password.
+Let the SonarQube pods spin up, you can then go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and watch until SonarQube is ready.  Now you can set the admin password.
 
 #### Admin Password
 
@@ -203,77 +130,7 @@ Then simply run the following script and follow its instructions. Make sure you 
 chmod +x updatesqadminpw.sh && ./updatesqadminpw.sh
 ```
 
-Go to https://sonarqube-<$tools>.pathfinder.gov.bc.ca and log in as `admin` with the new password (it is stored in sonarqube-admin-password secret).
-
-## Jenkins
-
-### Process the BuildConfig templates...
-
-These build configs have no build triggers, we start them manually - we don't want OpenShift to automatically deploy on a configuration change or an image change.
-
-The parameters and labels we are providing match up with the BCDevOps pipeline-cli.  Although we are not using the pipeline-cli, we try to align ourselves with its philosophies.  We will consider this deployment of Jenkins to be our "prod" deployment.  We are not providing all the labels pipeline-cli would, but the most important ones for identifying the app and the environment.
-
-#### Master
-
-```sh
-oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
-```
-
-#### Slave
-Create the slave build config and image stream, and then we add a build trigger for our main jenkins image.  This will allow the slave image to be built automatically when the master jenkins image is built.  For whatever reason, having the build trigger in the build config template doesn't work - it is stripped out.
-
-```sh
-oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
-
-oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:prod-1.0.0
-```
-
-##### Build master (and slave)
-Once the master is built, the slave's  build will be triggered.   Wait until the two images are built, then move on to deployment.
-
-```sh
-oc -n $tools start-build bc/jenkins-prod
-```
-
-### Process the Deployment templates
-
-#### Master
-
-```sh
-oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
-```
-
-#### Slave
-
-```sh
-oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
-```
-
-### Jenkins Base Image Update
-If the [base image](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic) for Jenkins is updated, you can update by starting a new build.  The BCDevOps team will be continually updating Jenkins for security patches and plugin patches.  Since our build is based on `jenkins-basic:v2-latest`, any time the image for that tag is updated, we can update our instance with a re-build.  Because our slave image has a trigger for our `jenkins:prod-1.0.0` image stream tag, the slave will be re-built.  Both the master and slave deployments are triggered on new builds.  So, by re-building the master image, we build and redeploy our whole Jenkins instance.  This means you should schedule your updates around your application builds.
-
-```sh
-oc -n $tools start-build bc/jenkins-prod
-```
-
-## Cleanup
-
-Should you need to tear down the Jenkins and SonarQube, you will want to run the following commands. Make sure you are sure this is what you want to do as you will not be able to recover old stored data!
-
-#### SonarQube
-```sh
-oc -n $tools delete all,template,secret,configmap,pvc,serviceaccount,rolebinding --selector app=sonarqube
-oc -n $tools delete secret/sonarqube-admin-password
-```
-
-#### Jenkins
-```sh
-oc -n $tools delete all,template,secret,configmap,pvc,serviceaccount,rolebinding --selector app=jenkins-prod
-oc -n $tools delete secret/template.jenkins-github
-oc -n $tools delete secret/template.jenkins-slave-user
-oc -n $tools delete cm/jobs-config
-oc -n $tools delete cm/ns-config
-```
+Go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and log in as `admin` with the new password (it is stored in sonarqube-admin-password secret).
 
 ### SonarQube Scanner
 
@@ -308,4 +165,169 @@ Once you have `sonar-scanner` installed, ensure that you are in the same directo
 
 ```sh
 sonar-scanner -Dsonar.host.url='CHANGEURLHERE' -Dsonar.projectKey='CHANGEPROJECTKEYHERE' -Dsonar.projectName='NR Get Token (CHANGEBRANCHNAMEHERE)'
+```
+
+## Jenkins
+
+Uses BCDevOps CICD Jenkins Basic install.  This Jenkins install includes a number of customizations. A customization of particular note is that it will register GitHub webhooks.  [link](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic)
+
+The commands, labels, and naming conventions follow the Pull Request Pipeline principles of the BCDevOps pipeline-cli [link](https://github.com/BCDevOps/pipeline-cli).
+
+The jobs that Jenkins creates and uses will also follow those principles and build out an "environment" for each pull request.
+
+Jenkins will include a slave/builder that can execute Node builds and run Sonarqube scanner.  You can use this as a reference if you need to create additional slaves (ex. python builds).  See [jenkins/openshift/build-slave.yaml](jenkins/openshift/build-slave.yaml).
+
+### Additional Setup Files/Scripts
+
+* **jenkins/docker/contrib/jenkins/configuration**
+
+    We need to make some additional configuration changes to the BCDevOps CICD Jenkins Basic install.  Under the [jenkins/docker/contrib/jenkins/configuration](jenkins/docker/contrib/jenkins/configuration) directory, we have additional start up scripts and configuration overrides.
+
+* **org.jenkinsci.plugins.workflow.libs.GlobalLibraries.xml**
+
+    We pull in [BCDevOps Jenkins Pipeline Shared Lib](https://github.com/BCDevOps/jenkins-pipeline-shared-lib).  This provides us some functions for examining the Git repos and commits. We can use these functions in Jenkinsfiles and other grovy scripts.
+
+* **scriptApproval.xml**
+
+    For our configuration groovy scripts, we need to allow certain jenkins and third party plugin scripts to run.  We override the restrictions here.
+
+* **init.groovy.d/003-create-jobs.groovy**
+
+    This groovy script will build 2 jobs in Jenkins.  One that will build the master branch, and one that will build pull requests.
+
+    To add or change the jobs, this is where you want to go.  The name of this file is important, as it needs to get run *BEFORE* the 003-register-github-webhooks.groovy included in the basic install.  Scripts are run alphabetically.  The jobs need to be created before the github webhooks are created.  Our jobs script will read secrets and configmaps created during this setup; described below.
+
+    These jobs are configured to use [Jenkinsfile](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile) and [Jenkinsfile.cicd](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile.cicd) found at the root of your project repository.  These Jenkinsfiles will make use of the OpenShift ConfigMaps we will create below.
+
+* **init.groovy.d/100-jenkins-config-set-admin-address.groovy**
+
+    This groovy script will update the admin email address.  It is not necessary, but an example of further customization to Jenkins.  If you are swiping this, keep in mind the email address is hardcoded.
+
+### Project Prerequisites
+
+We are setting up a CICD pipeline to build and deploy a specific project.  In order for this to work, there are expectations on those projects.  Currently, each project will require 3 files at the __root__ of the repository.
+
+| Name | Description |
+| --- | --- |
+| [Jenkinsfile](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile) | this is the master branch build pipeline |
+| [Jenkinsfile.cicd](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/Jenkinsfile.cicd) | this is the Pull Request build pipeline |
+| [sonar-project.properties](https://github.com/bcgov/nr-showcase-devops-tools/blob/master/sonar-project.properties) | this is will configure your SonarQube scans |
+
+This repository contains skeleton examples, see projects [NR Get Token](https://github.com/bcgov/nr-get-token.git) and [NR Messaging Service Showcase](https://github.com/bcgov/nr-messaging-service-showcase.git) for full examples.
+
+A very simple example to demonstrate a build and SonarQube analysis (no additional setup, no servers, no deployments), can be found at [nr-showcase-devops-tools-demo-sq](https://github.com/bcgov/nr-showcase-devops-tools-demo-sq.git).  This can be forked and used to test the Jenkins and SonarQube installation, and to demonstrate the master and pull request jobs.  For instance, the master branch will show Code Smells and duplicates in SonarQube.  In you fork, create a pull request that corrects these and see how the PR Jenkins job kicks off.
+
+### Jenkins Server Setup
+
+The following commands setup up Jenkins and uses this repository and specific OpenShift project namespaces.
+
+#### Create Secrets
+
+The BCDevOps CICD Jenkins Basic install requires a template github secret and a template for the slave.  This will create the secrets named as it requires.
+
+```sh
+oc -n $tools process -f "$templates_url/secrets.yaml" -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password | oc  -n $tools create -f -
+```
+
+#### Create ConfigMap for related namespaces
+
+For our custom jobs scripts and Jenkinsfiles.
+
+```sh
+oc -n $tools process -f "$templates_url/ns-config.yaml" -p DEV=$dev -p TEST=$test -p PROD=$prod -p TOOLS=$tools | oc  -n $tools create -f -
+```
+
+#### Create ConfigMap for the application
+
+For our custom jobs scripts and Jenkinsfiles.
+
+```sh
+oc -n $tools process -f "$templates_url/jobs-config.yaml" -p REPO_OWNER=$repo_owner -p REPO_NAME=$repo_name -p APP_NAME=$app_name -p APP_DOMAIN=$app_domain | oc -n $tools create -f -
+```
+
+#### Add Service Account Access to other Projects
+
+This is required in order to allow Jenkins to have the RBAC permissions to handle deployments in other namespaces.
+
+```sh
+oc -n $dev policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
+oc -n $test policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
+oc -n $prod policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
+```
+
+#### Process the BuildConfig templates
+
+These build configs have no build triggers, we start them manually - we don't want OpenShift to automatically deploy on a configuration change or an image change.
+
+The parameters and labels we are providing match up with the BCDevOps pipeline-cli.  Although we are not using the pipeline-cli, we try to align ourselves with its philosophies.  We will consider this deployment of Jenkins to be our "prod" deployment.  We are not providing all the labels pipeline-cli would, but the most important ones for identifying the app and the environment.
+
+##### Master BuildConfig
+
+```sh
+oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+```
+
+##### Slave BuildConfig
+
+Create the slave build config and image stream, and then we add a build trigger for our main jenkins image.  This will allow the slave image to be built automatically when the master Jenkins image is built.  For whatever reason, having the build trigger in the build config template doesn't work - it is stripped out.
+
+```sh
+oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+
+oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:prod-1.0.0
+```
+
+##### Build master (and slave)
+
+Once the master is built, the slave's  build will be triggered.   Wait until the two images are built, then move on to deployment.
+
+```sh
+oc -n $tools start-build bc/jenkins-prod
+```
+
+#### Process the Deployment templates
+
+Once the two images are created from the builds of the previous step, you may proceed with deploying those images.
+
+##### Master DeploymentConfig
+
+```sh
+oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+```
+
+##### Slave DeploymentConfig
+
+```sh
+oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -l app-name=jenkins -l env-name=prod -l env-id=0 -l app=jenkins-prod -o yaml | oc -n $tools create -f -
+```
+
+Give the process a few minutes. If it is successful, you should be able to get onto your new Jenkins server with the appropriate URL as specified by the route. Assuming you have reached this step and there are no errors, you will have successfully completed the tools deployment and are ready to do development.
+
+## Updates
+
+The BCDevOps team will be continually updating Jenkins for security patches and plugin patches. This section outlines the process to bring existing deployments up to alignment with the latest versions of software available.
+
+### Jenkins Base Image Update
+
+If the [base image](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic) for Jenkins is updated, you can update by starting a new build.  Since our build is based on `jenkins-basic:v2-latest`, any time the image for that tag is updated, we can update our instance with a re-build.  Because our slave image has a trigger for our `jenkins:prod-1.0.0` image stream tag, the slave will be re-built.  Both the master and slave deployments are triggered on new builds.  So, by re-building the master image, we build and redeploy our whole Jenkins instance in one action.  This means you should schedule your updates around your application builds.
+
+```sh
+oc -n $tools start-build bc/jenkins-prod
+```
+
+## Cleanup
+
+Should you need to tear down the Jenkins and SonarQube, you will want to run the following commands. Make sure you are sure this is what you want to do as this is a destructive operation. You WILL NOT be able to recover old stored data!
+
+### SonarQube Cleanup
+
+```sh
+oc -n $tools delete all,template,secret,cm,pvc,sa,rolebinding --selector app=sonarqube
+oc -n $tools delete secret/sonarqube-admin-password
+```
+
+### Jenkins Cleanup
+
+```sh
+oc -n $tools delete all,template,secret,cm,pvc,sa,rolebinding --selector app=jenkins-prod
 ```
