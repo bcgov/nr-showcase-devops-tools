@@ -1,9 +1,10 @@
 ---
 kind: Template
 apiVersion: v1
+labels:
+  app: jenkins-prod
 metadata:
   name: jenkins
-  creationTimestamp:
 objects:
 - apiVersion: v1
   data:
@@ -13,11 +14,10 @@ objects:
     project.tools: "${TOOLS}"
   kind: ConfigMap
   metadata:
-    creationTimestamp:
     name: ns-config
 parameters:
 - name: DEV
-  displayName: Dev. Project Namespace
+  displayName: Dev Project Namespace
   description: Project/Namespace for Dev. Environment
   required: true
   value: dev
@@ -27,7 +27,7 @@ parameters:
   required: true
   value: test
 - name: PROD
-  displayName: Prod. Project Namespace
+  displayName: Prod Project Namespace
   description: Project/Namespace for Prod. Environment
   required: true
   value: prod
