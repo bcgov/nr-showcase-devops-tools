@@ -1,13 +1,13 @@
 # Natural Resources Common Services Showcase DevOps Tools Repository
 
-This repository is for the NR Common Services Showcase Devops tools.  This includes our Continuous Integration / Continuous Delivery (CICD) setup used in other projects.  The tools are used to create a full Pull Request based CICD pipeline.  This is continually evolving as more tools are added (ex. Sonarqube) to our pipeline.
-
+This repository is for the NR Common Services Showcase Devops tools.  This includes our Continuous Integration / Continuous Delivery (CICD) setup used in other projects.  The tools are used to create a full Pull Request based CICD pipeline.  This is continually evolving as more tools are added (ex. Sonarqube) to our pipeline. This repository also contains potentially useful standalone tools (ex. Metabase) that may be needed in certain contexts.
 
 ## Directory Structure
 
     .github/                   - PR and Issue templates
     tools/                     - Devops utilities
-    └── jenkins                - Jenkins standup
+    ├── jenkins                - Jenkins standup
+    └── metabase               - Metabase standup
     CODE-OF-CONDUCT.md         - Code of Conduct
     CONTRIBUTING.md            - Contributing Guidelines
     LICENSE                    - License
@@ -17,6 +17,7 @@ This repository is for the NR Common Services Showcase Devops tools.  This inclu
 * [Installation](tools/README.md)
 * [Showcase Team Roadmap](https://github.com/bcgov/nr-get-token/wiki/Product-Roadmap)
 * [Devops Tools SonarQube Demo app](https://github.com/bcgov/nr-showcase-devops-tools-demo-sq.git)
+* [Metabase Installation](tools/metabase/README.md)
 
 ## Getting Help or Reporting an Issue
 
