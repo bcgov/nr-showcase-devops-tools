@@ -116,7 +116,7 @@ The SonarQube server instance is created with standard insecure credentials (Use
 
 The BCDevOps SonarQube repo provides a script that will generate a random PW, set it in SonarQube, and create a secret. This can be found under the  `/provisioning` folder of the cloned BCDevOps repo.
 
-In order to directly get and automatically run the password reset script, execute the following:
+For the next stage of configuration, wait until the SonarQube app is fully deployed and operational before running this script.  Once you have verified the app is fully deployed, you can proceed to automatically run the password reset script as follows:
 
 ```sh
 curl https://raw.githubusercontent.com/BCDevOps/sonarqube/bbb9f62e29706b61382cf24d7ad7e08f2476a01f/provisioning/updatesqadminpw.sh | sh
