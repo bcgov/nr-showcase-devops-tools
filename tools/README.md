@@ -116,19 +116,14 @@ The SonarQube server instance is created with standard insecure credentials (Use
 
 The BCDevOps SonarQube repo provides a script that will generate a random PW, set it in SonarQube, and create a secret. This can be found under the  `/provisioning` folder of the cloned BCDevOps repo.
 
-In order to directly get the password reset script, run the following:
+For the next stage of configuration, wait until the SonarQube app is fully deployed and operational before running this script.  Once you have verified the app is fully deployed, you can proceed to automatically run the password reset script as follows:
 
 ```sh
-curl https://raw.githubusercontent.com/BCDevOps/sonarqube/bbb9f62e29706b61382cf24d7ad7e08f2476a01f/provisioning/updatesqadminpw.sh > updatesqadminpw.sh
+curl https://raw.githubusercontent.com/BCDevOps/sonarqube/bbb9f62e29706b61382cf24d7ad7e08f2476a01f/provisioning/updatesqadminpw.sh | sh
 ```
+This will download and run the password reset script and save a new random password in the secrets manager under ``sonarqube-admin-password``
 
-Then simply run the following script and follow its instructions. Make sure you save the new password in an OpenShift secret or equivalent!  Ensure that the SonarQube app is fully deployed and operational before running this script.
-
-```sh
-chmod +x updatesqadminpw.sh && ./updatesqadminpw.sh
-```
-
-Go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and log in as `admin` with the new password (it is stored in sonarqube-admin-password secret).
+Go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and log in as `admin` with the new password (the one stored in the sonarqube-admin-password secret mentioned above).
 
 ## Jenkins
 
