@@ -7,17 +7,24 @@ This folder contains the OpenShift templates required in order to build and depl
 While Metabase does provide a Docker image [here](https://hub.docker.com/r/metabase/metabase), it is not compatible with OpenShift due to the image assuming it has root privileges. Instead, we build a simple Java image based off of Alpine JDK 8 where the metabase application can execute without needing privilege escalation. In order to build a Metabase image in your project, process and create the build config template using the following command (replace anything in angle brackets with the correct value):
 
 ``` sh
-oc process -n <namespace> -f metabase.bc.yaml -o yaml | oc create -n <namespace> -f -
+export BASE_URL="https://raw.githubusercontent.com/bcgov/nr-showcase-devops-tools/master/tools/metabase/openshift"
+export NAMESPACE=wxpbtr-dev
+export METABASE_VERSION=v0.35.3
+
+oc process -n $NAMESPACE -f $BASE_URL/metabase.bc.yaml -p METABASE_VERSION=$METABASE_VERSION -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
-This will create two ImageStreams: `openjdk` and `metabase`. OpenJDK is the base java image that will be built on, and metabase is the finished image build.
+This will create an ImageStream called `metabase`. This image is built on top of Alpine OpenJDK, and will have Metabase installed on it.
 
 ## Deploy Metabase
 
 Once your metabase image has been successfully built, you can then deploy it in your project by using the following command (replace anything in angle brackets with the correct value):
 
 ``` sh
-oc process -n <namespace> -f metabase.dc.yaml ADMIN_EMAIL=<youremailhere> NAMESPACE=<namespace> -o yaml | oc create -n 9f0fbe-prod -f -
+export ADMIN_EMAIL=NR.CommonServiceShowcase@gov.bc.ca
+export NAMESPACE=wxpbtr-dev
+
+oc process -n $NAMESPACE -f $BASE_URL//metabase.dc.yaml ADMIN_EMAIL=$ADMIN_EMAIL NAMESPACE=$NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
 This will create a new Secret, Service, Route, Persistent Volume Claim, and Deployment Configuration. This Deployment Config has liveliness and readiness checks built in, and handles image updates via Recreation strategy. A rolling update cannot work because the H2 database is locked by the old running pod and prevents the newer instance of Metabase from starting up.
