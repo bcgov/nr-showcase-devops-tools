@@ -8,7 +8,7 @@ While Metabase does provide a Docker image [here](https://hub.docker.com/r/metab
 
 ``` sh
 export BASE_URL="https://raw.githubusercontent.com/bcgov/nr-showcase-devops-tools/master/tools/metabase/openshift"
-export NAMESPACE=wxpbtr-dev
+export NAMESPACE=<YOURNAMESPACE>
 export METABASE_VERSION=v0.35.3
 
 oc process -n $NAMESPACE -f $BASE_URL/metabase.bc.yaml -p METABASE_VERSION=$METABASE_VERSION -o yaml | oc apply -n $NAMESPACE -f -
@@ -22,9 +22,9 @@ Once your metabase image has been successfully built, you can then deploy it in 
 
 ``` sh
 export ADMIN_EMAIL=NR.CommonServiceShowcase@gov.bc.ca
-export NAMESPACE=wxpbtr-dev
+export NAMESPACE=<YOURNAMESPACE>
 
-oc process -n $NAMESPACE -f $BASE_URL//metabase.dc.yaml ADMIN_EMAIL=$ADMIN_EMAIL NAMESPACE=$NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
+oc process -n $NAMESPACE -f $BASE_URL/metabase.dc.yaml ADMIN_EMAIL=$ADMIN_EMAIL NAMESPACE=$NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
 This will create a new Secret, Service, Route, Persistent Volume Claim, and Deployment Configuration. This Deployment Config has liveliness and readiness checks built in, and handles image updates via Recreation strategy. A rolling update cannot work because the H2 database is locked by the old running pod and prevents the newer instance of Metabase from starting up.
