@@ -100,12 +100,16 @@ We outline below the rapid startup steps to get SonarQube Server setup. Refer to
 
 You will need to use the `sonarqube-postgresql-template.yaml` file in order to deploy it to openshift. This will deploy BOTH the PostgreSQL database AND the SonarQube server.
 
-*Note: At the time of writing, the master branch of BCDevOps SonarQube repo was at commit `bbb9f62e29706b61382cf24d7ad7e08f2476a01f`.  And the template was at commit `bc80961d75eed66ec70ca022a6444963341fb39f`.*
+*Note: At the time of writing, the master branch of BCDevOps SonarQube repo was at commit `d4d0cf1b4237588058c2d1e9302c6fb30acd5752` and we are using the template found at commit `d8b63af664ec2e88026e13885e6acd85d8763c79`.*
 
 Deploying the database is done with the following:
 
 ```sh
-oc -n $tools new-app -f https://raw.githubusercontent.com/BCDevOps/sonarqube/bc80961d75eed66ec70ca022a6444963341fb39f/sonarqube-postgresql-template.yaml --param=SONARQUBE_VERSION=6.7.5
+export sq_commit=d8b63af664ec2e88026e13885e6acd85d8763c79
+
+oc project $tools
+
+oc -n $tools new-app -f https://raw.githubusercontent.com/BCDevOps/sonarqube/$sq_commit/sonarqube-postgresql-template.yaml --param=SONARQUBE_VERSION=6.7.7
 ```
 
 Let the SonarQube pods spin up, you can then go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and watch until SonarQube is ready.  Now you can set the admin password.
@@ -119,9 +123,12 @@ The BCDevOps SonarQube repo provides a script that will generate a random PW, se
 For the next stage of configuration, wait until the SonarQube app is fully deployed and operational before running this script.  Once you have verified the app is fully deployed, you can proceed to automatically run the password reset script as follows:
 
 ```sh
-curl https://raw.githubusercontent.com/BCDevOps/sonarqube/bbb9f62e29706b61382cf24d7ad7e08f2476a01f/provisioning/updatesqadminpw.sh | sh
+oc project $tools
+
+curl -s https://raw.githubusercontent.com/BCDevOps/sonarqube/$sq_commit/provisioning/updatesqadminpw.sh | sh
 ```
-This will download and run the password reset script and save a new random password in the secrets manager under ``sonarqube-admin-password``
+
+This will download and run the password reset script and save a new random password in the secrets manager under `sonarqube-admin-password`
 
 Go to `https://sonarqube-<$tools>.pathfinder.gov.bc.ca` and log in as `admin` with the new password (the one stored in the sonarqube-admin-password secret mentioned above).
 
@@ -227,7 +234,7 @@ The parameters and labels we are providing match up with the BCDevOps pipeline-c
 ##### Master BuildConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -o yaml | oc -n $tools apply -f -
 ```
 
 ##### Slave BuildConfig
@@ -235,7 +242,7 @@ oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SU
 Create the slave build config and image stream, and then we add a build trigger for our main jenkins image.  This will allow the slave image to be built automatically when the master Jenkins image is built.  For whatever reason, having the build trigger in the build config template doesn't work - it is stripped out.
 
 ```sh
-oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -o yaml | oc -n $tools apply -f -
 
 oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:prod-1.0.0
 ```
@@ -303,7 +310,7 @@ This section contains notes about how to do certain CI/CD tasks on your local ma
 
 In order for static code analysis to happen, there must be a scanner agent that processes the code. This is achieved with the sonar-scanner distribution which can be found [here](https://github.com/SonarSource/sonar-scanner-cli). This is preinstalled on the Jenkins Slave agent.
 
-*Note: At the time of writing, we are currently using version `3.3.0.1492`.*
+*Note: At the time of writing, we are currently using version `3.3.0.1492`. Later versions cause illegal exception errors with SonarQube 6.x.*
 
 #### Run scan locally
 
