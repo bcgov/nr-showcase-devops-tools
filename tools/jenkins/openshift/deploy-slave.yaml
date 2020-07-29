@@ -22,7 +22,7 @@ objects:
       recreateParams:
         timeoutSeconds: 600
       resources: {}
-      type: Recreate
+      type: Rolling
     template:
       metadata:
         creationTimestamp:
@@ -183,7 +183,7 @@ parameters:
 - name: CPU_REQUEST
   description: Minimal CPU needed to run
   displayName: CPU Request
-  value: 300m
+  value: 100m
 - name: CPU_LIMIT
   description: Maximum CPU allowed to use
   displayName: CPU Limit

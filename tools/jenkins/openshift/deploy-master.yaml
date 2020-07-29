@@ -129,11 +129,11 @@ objects:
             timeoutSeconds: 240
           resources:
             limits:
-              cpu: 2000m
-              memory: 2Gi
+              cpu: "${CPU_LIMIT}"
+              memory: "${MEMORY_LIMIT}"
             requests:
-              cpu: 300m
-              memory: 1Gi
+              cpu: "${CPU_REQUEST}"
+              memory: "${MEMORY_REQUEST}"
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
@@ -295,3 +295,19 @@ parameters:
   displayName: GH_PASSWORD
   name: GH_PASSWORD
   required: true
+- name: CPU_REQUEST
+  description: Minimal CPU needed to run
+  displayName: CPU Request
+  value: 100m
+- name: CPU_LIMIT
+  description: Maximum CPU allowed to use
+  displayName: CPU Limit
+  value: 2000m
+- name: MEMORY_REQUEST
+  description: Minimal amount of memory needed to run
+  displayName: Memory Request
+  value: 512Mi
+- name: MEMORY_LIMIT
+  description: Maximum amount of memory allowed to use
+  displayName: Memory Limit
+  value: 2Gi
