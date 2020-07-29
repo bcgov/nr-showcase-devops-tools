@@ -42,7 +42,8 @@ objects:
     source:
       dockerfile: |
         FROM BuildConfig
-        ARG NODE_VERSION=v12.17.0
+        ARG GRADLE_VERSION=4.2.1
+        ARG NODE_VERSION=v12.18.3
         ARG SONAR_VERSION=3.3.0.1492
         USER 0
         RUN fix_permission() { while [[ $# > 0 ]] ; do chgrp -R 0 "$1" && chmod -R g=u "$1"; shift; done } && \
@@ -55,7 +56,13 @@ objects:
             rm -rf /tmp/sonar-scanner-cli && \
             curl -sSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz | tar -Jx -C /opt && \
             mv /opt/node-${NODE_VERSION}-linux-x64 /opt/node && \
-            fix_permission '/opt/sonar-scanner' '/opt/node'
+            curl -sSL -o /tmp/gradle-bin.zip https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
+            unzip /tmp/gradle-bin.zip -d /tmp/gradle-bin && \
+            mv /tmp/gradle-bin/gradle-${GRADLE_VERSION} /opt/gradle && \
+            ln -s /opt/gradle/bin/gradle /usr/local/bin && \
+            rm -rf /tmp/gradle-bin.zip && \
+            rm -rf /tmp/gradle-bin && \
+            fix_permission '/opt/sonar-scanner' '/opt/node' '/opt/gradle'
         ENV NODE_HOME=/opt/node \
             PATH=$PATH:/opt/node/bin
         USER 1001
