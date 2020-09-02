@@ -73,7 +73,7 @@ parameters:
   value: bcgov
 - name: SOURCE_IMAGE_STREAM_TAG
   required: true
-  value: jenkins-basic:v2-latest
+  value: jenkins-basic:v2-stable
 - name: SOURCE_REPOSITORY_URL
   required: true
 - name: SOURCE_REPOSITORY_REF
