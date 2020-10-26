@@ -84,6 +84,14 @@ Once logged into the OpenShift console, go to your tools project.  Each oc comma
 oc project $tools
 ```
 
+### Apply Network Security Policies
+
+On OCP4, Network Security Policies must be explicitly defined in order to permit network traffic. Before proceeding any further, ensure that the "generic" NSP rules are applied to the project. More details can be found [here](https://github.com/bcgov/nr-get-token/wiki/Network-Security-Policy#previous-security-model).
+
+```sh
+oc process -n $tools -f https://github.com/bcgov/nr-get-token/wiki/assets/nsp.yaml NAMESPACE=$tools | oc create -n $tools -f -
+```
+
 ## SonarQube
 
 SonarQube should be installed and configured first, as the Jenkins will run the pipeline which will may require SonarQube.  So, stand up and configure SonarQube first.
@@ -234,7 +242,7 @@ The parameters and labels we are providing match up with the BCDevOps pipeline-c
 ##### Master BuildConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -o yaml | oc -n $tools apply -f -
+oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -p SOURCE_IMAGE_STREAM_NAMESPACE=$tools -o yaml | oc -n $tools apply -f -
 ```
 
 ##### Slave BuildConfig
