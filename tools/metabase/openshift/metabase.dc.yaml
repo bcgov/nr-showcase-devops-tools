@@ -100,7 +100,7 @@ objects:
                   value: 0.0.0.0
                 - name: MB_PASSWORD_COMPLEXITY
                   value: strong
-              image: docker-registry.default.svc:5000/${NAMESPACE}/${NAME}:${VERSION}
+              image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}:${VERSION}
               imagePullPolicy: IfNotPresent
               livenessProbe:
                 failureThreshold: 3

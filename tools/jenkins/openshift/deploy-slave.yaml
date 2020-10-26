@@ -31,7 +31,7 @@ objects:
       spec:
         initContainers:
         - name: init
-          image: docker-registry.default.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
+          image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
           command:
           - curl
           - "-sSf"
@@ -54,7 +54,7 @@ objects:
             value: "${ENV_NAME}"
           - name: ENV_ID
             value: "${ENV_ID}"
-          image: docker-registry.default.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
+          image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
           imagePullPolicy: Always
           name: jenkins
           ports:
