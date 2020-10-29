@@ -2,6 +2,9 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
+  app.kubernetes.io/component: "${SLAVE_NAME}"
+  app.kubernetes.io/name: jenkins
+  app.kubernetes.io/part-of: jenkins
   app: jenkins-prod
 metadata:
   creationTimestamp:
