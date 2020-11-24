@@ -69,7 +69,7 @@ Configure any remaining application specific details here.
 
 ```sh
 export app_name=<your application acronym/short name>
-export app_domain=pathfinder.gov.bc.ca
+export app_domain=apps.silver.devops.gov.bc.ca
 ```
 
 ### Login to OpenShift
@@ -102,6 +102,8 @@ oc -n $tools secrets link builder dockerhub-registry
 ```
 
 ## SonarQube
+
+_Note: These instructions are deprecated and will likely be phased out in favor of SonarCloud to reduce infrastructure costs._
 
 SonarQube should be installed and configured first, as the Jenkins will run the pipeline which will may require SonarQube.  So, stand up and configure SonarQube first.
 
@@ -208,6 +210,16 @@ A very simple example to demonstrate a build and SonarQube analysis (no addition
 
 The following commands setup up Jenkins and uses this repository and specific OpenShift project namespaces.
 
+#### Build Jenkins Basic Image
+
+Due to the transition to OCP4, the `jenkins-basic` image will no longer be built and maintained in the `bcgov` namespace. Instead, we will need to build the image ourselves (more details [here](https://developer.gov.bc.ca/Cloud-Migration/Migrating-Your-BC-Gov-Jenkins-to-the-Cloud)). Run the following command to build out the community maintained `jenkins-basic` image in your tools namespace.
+
+```sh
+oc -n $tools process -f https://raw.githubusercontent.com/BCDevOps/openshift-components/master/cicd/jenkins-basic/openshift/build.yaml -o yaml | oc -n $tools apply -f -
+```
+
+Give the process a few minutes and wait until the image is built before proceeding.
+
 #### Create Secrets
 
 The BCDevOps CICD Jenkins Basic install requires a template github secret and a template for the slave.  This will create the secrets named as it requires.
@@ -234,7 +246,7 @@ oc -n $tools process -f "$templates_url/jobs-config.yaml" -p REPO_OWNER=$repo_ow
 
 #### Add Service Account Access to other Projects
 
-This is required in order to allow Jenkins to have the RBAC permissions to handle deployments in other namespaces.
+This is required in order to allow Jenkins to have the RBAC permissions to handle deployments in other associated namespaces.
 
 ```sh
 oc -n $dev policy add-role-to-user admin system:serviceaccount:$tools:jenkins-prod
@@ -251,7 +263,7 @@ The parameters and labels we are providing match up with the BCDevOps pipeline-c
 ##### Master BuildConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_REPOSITORY_REF=$tools_repo_ref -p SOURCE_IMAGE_STREAM_NAMESPACE=$tools -o yaml | oc -n $tools apply -f -
+oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=v1.0.0 -p SOURCE_REPOSITORY_REF=$tools_repo_ref -p SOURCE_REPOSITORY_URL=$tools_repo_url -p SOURCE_IMAGE_STREAM_NAMESPACE=$tools -o yaml | oc -n $tools apply -f -
 ```
 
 ##### Slave BuildConfig
@@ -259,14 +271,14 @@ oc -n $tools process -f "$templates_url/build-master.yaml" -p NAME=jenkins -p SU
 Create the slave build config and image stream, and then we add a build trigger for our main jenkins image.  This will allow the slave image to be built automatically when the master Jenkins image is built.  For whatever reason, having the build trigger in the build config template doesn't work - it is stripped out.
 
 ```sh
-oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p SLAVE_NAME=main -p SOURCE_IMAGE_STREAM_TAG=jenkins:prod-1.0.0 -o yaml | oc -n $tools apply -f -
+oc -n $tools process -f "$templates_url/build-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=v1.0.0 -p SLAVE_NAME=main -p -o yaml | oc -n $tools apply -f -
 
-oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:prod-1.0.0
+oc -n $tools set triggers bc jenkins-slave-main-prod --from-image=$tools/jenkins:v1.0.0
 ```
 
 ##### Build master (and slave)
 
-Once the master is built, the slave's  build will be triggered.   Wait until the two images are built, then move on to deployment.
+Once the master is built, the slave's  build will be triggered.  Wait until the two images are built, then move on to deployment.
 
 ```sh
 oc -n $tools start-build bc/jenkins-prod
@@ -279,24 +291,30 @@ Once the two images are created from the builds of the previous step, you may pr
 ##### Master DeploymentConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/deploy-master.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=v1.0.0 -p ROUTE_HOST=jenkins-prod-$tools.$app_domain -p GH_USERNAME=$gh_username -p GH_PASSWORD=$gh_password -o yaml | oc -n $tools apply -f -
 ```
 
 ##### Slave DeploymentConfig
 
 ```sh
-oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=prod-1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -o yaml | oc -n $tools create -f -
+oc -n $tools process -f "$templates_url/deploy-slave.yaml" -p NAME=jenkins -p SUFFIX=-prod -p VERSION=v1.0.0 -p NAMESPACE=$tools -p SLAVE_NAME=build -o yaml | oc -n $tools apply -f -
 ```
 
 Give the process a few minutes. If it is successful, you should be able to get onto your new Jenkins server with the appropriate URL as specified by the route. Assuming you have reached this step and there are no errors, you will have successfully completed the tools deployment and are ready to do development.
 
 ## Updates
 
-The BCDevOps team will be continually updating Jenkins for security patches and plugin patches. This section outlines the process to bring existing deployments up to alignment with the latest versions of software available.
+The general community will be continually updating Jenkins for security patches and plugin patches. This section outlines the process to bring existing deployments up to alignment with the latest versions of software available.
 
 ### Jenkins Base Image Update
 
-If the [base image](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic) for Jenkins is updated, you can update by starting a new build.  Since our build is based on `jenkins-basic:v2-latest`, any time the image for that tag is updated, we can update our instance with a re-build.  Because our slave image has a trigger for our `jenkins:prod-1.0.0` image stream tag, the slave will be re-built.  Both the master and slave deployments are triggered on new builds.  So, by re-building the master image, we build and redeploy our whole Jenkins instance in one action.  This means you should schedule your updates around your application builds.
+If the [base image](https://github.com/BCDevOps/openshift-components/tree/master/cicd/jenkins-basic) for Jenkins is updated, you can update by starting a new build with the following command:
+
+```sh
+oc -n $tools start-build bc/jenkins-basic
+```
+
+Any time the `jenkins-basic` imagestream tag `v2-latest` is updated, we can update our prod instance with a re-build.  Because our slave image has a trigger for our `jenkins:v1.0.0` image stream tag, the slave will also be re-built.  Both the master and slave deployments are triggered on new builds.  So, by re-building the master image, we build and redeploy our whole Jenkins instance in one action.  This means you should schedule your updates around your application builds. To force a jenkins prod rebuild, run the following:
 
 ```sh
 oc -n $tools start-build bc/jenkins-prod
