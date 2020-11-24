@@ -92,6 +92,15 @@ On OCP4, Network Security Policies must be explicitly defined in order to permit
 oc process -n $tools -f https://github.com/bcgov/nr-get-token/wiki/assets/nsp.yaml NAMESPACE=$tools | oc create -n $tools -f -
 ```
 
+### Add DockerHub Pull Credentials
+
+As of November 20, 2020, DockerHub is now rate-limiting image pulls ([details here](https://www.docker.com/increase-rate-limits)). In order to ensure that your application builds and deployments are not blocked by the rate limiting, you will need to provide authentication credentials to the openshift builder. Doing this makes it so that you pull the images as the provided account instead of anonymously. Run the following commands, replacing `DOCKERHUBUSERNAME`, `DOCKERHUBPERSONALACCESSTOKEN` and `DOCKERHUBEMAIL` as needed.
+
+```sh
+oc create -n $tools secret docker-registry dockerhub-registry --docker-server=https://index.docker.io/v1/ --docker-username=<DOCKERHUBUSERNAME> --docker-password=<DOCKERHUBPERSONALACCESSTOKEN> --docker-email=<DOCKERHUBEMAIL>
+oc -n $tools secrets link builder dockerhub-registry
+```
+
 ## SonarQube
 
 SonarQube should be installed and configured first, as the Jenkins will run the pipeline which will may require SonarQube.  So, stand up and configure SonarQube first.
