@@ -43,27 +43,30 @@ objects:
       dockerfile: |
         FROM BuildConfig
         ARG GRADLE_VERSION=4.2.1
-        ARG NODE_VERSION=v12.18.3
+        ARG NODE_VERSION=v14.15.1
         ARG SONAR_VERSION=3.3.0.1492
         USER 0
         RUN fix_permission() { while [[ $# > 0 ]] ; do chgrp -R 0 "$1" && chmod -R g=u "$1"; shift; done } && \
             set -x && \
             curl -sSL -o /tmp/sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_VERSION}-linux.zip && \
-            unzip /tmp/sonar-scanner-cli.zip -d /tmp/sonar-scanner-cli && \
+            unzip -q /tmp/sonar-scanner-cli.zip -d /tmp/sonar-scanner-cli && \
             mv /tmp/sonar-scanner-cli/sonar-scanner-${SONAR_VERSION}-linux /opt/sonar-scanner && \
             ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin && \
             rm -rf /tmp/sonar-scanner-cli.zip && \
             rm -rf /tmp/sonar-scanner-cli && \
-            curl -sSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz | tar -Jx -C /opt && \
+            curl -sSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.gz | tar -xz -C /opt && \
             mv /opt/node-${NODE_VERSION}-linux-x64 /opt/node && \
             curl -sSL -o /tmp/gradle-bin.zip https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
-            unzip /tmp/gradle-bin.zip -d /tmp/gradle-bin && \
+            unzip -q /tmp/gradle-bin.zip -d /tmp/gradle-bin && \
             mv /tmp/gradle-bin/gradle-${GRADLE_VERSION} /opt/gradle && \
             ln -s /opt/gradle/bin/gradle /usr/local/bin && \
             rm -rf /tmp/gradle-bin.zip && \
             rm -rf /tmp/gradle-bin && \
             fix_permission '/opt/sonar-scanner' '/opt/node' '/opt/gradle'
-        ENV NODE_HOME=/opt/node \
+        ENV LANG='en_US.UTF-8' \
+            LANGUAGE='en_US:en' \
+            LC_ALL='en_US.UTF-8' \
+            NODE_HOME=/opt/node \
             PATH=$PATH:/opt/node/bin
         USER 1001
       type: Dockerfile
@@ -98,7 +101,7 @@ parameters:
   value: ""
 - name: SOURCE_IMAGE_STREAM_TAG
   required: true
-  value: "jenkins:prod-1.0.0"
+  value: "jenkins:v1.0.0"
 - name: SOURCE_GIT_URL
   value: https://github.com/bcdevops/nr-showcase-devops-tools
 - name: SOURCE_GIT_REF
