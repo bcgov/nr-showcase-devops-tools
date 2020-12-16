@@ -1,4 +1,4 @@
-# Natural Resources Common Services Showcase DevOps Tools Repository
+# Natural Resources Common Services Showcase DevOps Tools [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![img](https://img.shields.io/badge/Lifecycle-Stable-97ca00)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)
 
 This repository is for the NR Common Services Showcase Devops tools.  This includes our Continuous Integration / Continuous Delivery (CICD) setup used in other projects.  The tools are used to create a full Pull Request based CICD pipeline.  This is continually evolving as more tools are added (ex. Sonarqube) to our pipeline. This repository also contains potentially useful standalone tools (ex. Metabase) that may be needed in certain contexts.
 

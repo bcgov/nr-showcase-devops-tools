@@ -2,6 +2,9 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
+  app.kubernetes.io/component: "${SLAVE_NAME}"
+  app.kubernetes.io/name: jenkins
+  app.kubernetes.io/part-of: jenkins
   app: jenkins-prod
 metadata:
   creationTimestamp:
@@ -31,7 +34,7 @@ objects:
       spec:
         initContainers:
         - name: init
-          image: docker-registry.default.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
+          image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
           command:
           - curl
           - "-sSf"
@@ -54,7 +57,7 @@ objects:
             value: "${ENV_NAME}"
           - name: ENV_ID
             value: "${ENV_ID}"
-          image: docker-registry.default.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
+          image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}-slave-main:${VERSION}
           imagePullPolicy: Always
           name: jenkins
           ports:
@@ -158,7 +161,7 @@ parameters:
   description: A version used for the image tags
   displayName: Version
   required: true
-  value: prod-1.0.0
+  value: v1.0.0
 - name: NAMESPACE
   description: Target namespace reference (i.e. 'k8vopl-tools')
   displayName: Namespace
@@ -187,7 +190,7 @@ parameters:
 - name: CPU_LIMIT
   description: Maximum CPU allowed to use
   displayName: CPU Limit
-  value: 4000m
+  value: 2000m
 - name: MEMORY_REQUEST
   description: Minimal amount of memory needed to run
   displayName: Memory Request
@@ -195,4 +198,4 @@ parameters:
 - name: MEMORY_LIMIT
   description: Maximum amount of memory allowed to use
   displayName: Memory Limit
-  value: 4Gi
+  value: 2Gi
