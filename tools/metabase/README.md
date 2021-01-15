@@ -4,30 +4,46 @@ This folder contains the OpenShift templates required in order to build and depl
 
 ## Build Metabase
 
-While Metabase does provide a Docker image [here](https://hub.docker.com/r/metabase/metabase), it is not compatible with OpenShift due to the image assuming it has root privileges. Instead, we build a simple Java image based off of Alpine JDK 8 where the metabase application can execute without needing privilege escalation. In order to build a Metabase image in your project, process and create the build config template using the following command (replace anything in angle brackets with the correct value):
+While Metabase does provide a Docker image [here](https://hub.docker.com/r/metabase/metabase), it is not compatible with OpenShift due to the image assuming it has root privileges. Instead, we build a simple Java image based off of OpenJDK 11 where the metabase application can execute without needing privilege escalation. In order to build a Metabase image in your project, process and create the build config template using the following command (replace anything in angle brackets with the correct value):
 
 ``` sh
 export BASE_URL="https://raw.githubusercontent.com/bcgov/nr-showcase-devops-tools/master/tools/metabase/openshift"
 export NAMESPACE=<YOURNAMESPACE>
-export METABASE_VERSION=v0.35.3
+export METABASE_VERSION=v0.37.6
 
 oc process -n $NAMESPACE -f $BASE_URL/metabase.bc.yaml -p METABASE_VERSION=$METABASE_VERSION -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
-This will create an ImageStream called `metabase`. This image is built on top of Alpine OpenJDK, and will have Metabase installed on it.
+This will create an ImageStream called `metabase`. This image is built on top of Alpine OpenJDK 11, and will have Metabase installed on it.
 
 ## Deploy Metabase
 
-Once your metabase image has been successfully built, you can then deploy it in your project by using the following command (replace anything in angle brackets with the correct value):
+Once your metabase image has been successfully built, you can then deploy it in your project by using the following commands (replace anything in angle brackets with the correct value):
 
 ``` sh
 export ADMIN_EMAIL=NR.CommonServiceShowcase@gov.bc.ca
 export NAMESPACE=<YOURNAMESPACE>
+export PREFIX=<YOURCUSTOMPREFIX>
 
-oc process -n $NAMESPACE -f $BASE_URL/metabase.dc.yaml ADMIN_EMAIL=$ADMIN_EMAIL NAMESPACE=$NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
+oc process -n $NAMESPACE -f $BASE_URL/metabase.secret.yaml -p ADMIN_EMAIL=$ADMIN_EMAIL -o yaml | oc create -n $NAMESPACE -f -
+
+oc process -n $NAMESPACE -f $BASE_URL/metabase.dc.yaml -p NAMESPACE=$NAMESPACE -p PREFIX=$PREFIX -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
-This will create a new Secret, Service, Route, Persistent Volume Claim, and Deployment Configuration. This Deployment Config has liveliness and readiness checks built in, and handles image updates via Recreation strategy. A rolling update cannot work because the H2 database is locked by the old running pod and prevents the newer instance of Metabase from starting up.
+This will create a new Secret, and create or patch a Service, Route, Persistent Volume Claim, and Deployment Configuration. This Deployment Config has health checks built in, and handles image updates via Recreation strategy. A rolling update cannot work because the H2 database is locked by the old running pod and prevents the newer instance of Metabase from starting up. Also note that due to the H2 database constraint, this Metabase deployment cannot be highly available (aka have a replica count larger than 1).
+
+## NSP Setup
+
+On OCP4, you must have NSPs available to allow specific pods to connect to other resources within the cluster. In our case, we will generally want the ability for metabase to establish database connections to databases potentially on different namespaces. Run the following template to add an NSP rule allowing Metabase to reach a target database.
+
+``` sh
+export NAMESPACE=<YOURNAMESPACE>
+export TARGET_NAMESPACE=<YOURTARGETNAMESPACE>
+
+oc process -n $NAMESPACE -f $BASE_URL/metabase.nsp.yaml -p NAMESPACE=$NAMESPACE -p TARGET_NAMESPACE=$TARGET_NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
+```
+
+In the event your Metabase instance needs to connect to multiple databases, you may repeat this command for each different database.
 
 ## Initial Setup
 
@@ -35,4 +51,12 @@ Once Metabase is up and functional (this will take between 3 to 5 minutes), you 
 
 ## Notes
 
-In general, Metabase should generally take up very little CPU (<0.01 cores) and float between 700 to 800mb of memory usage during operation. The template has some reasonable requests and limits set for both CPU and Memory, but you may change it should your needs be different. For some more documentation referencees, you may refer [here](https://github.com/loneil/domo-metabase-viewer/tree/master/docs) for historical templates and tutorials, or inspect the official Metabase documentation [here](https://www.metabase.com/docs/latest/).
+In general, Metabase should take up very little CPU (<0.01 cores) and float between 700 to 800mb of memory usage during operation. The template has some reasonable requests and limits set for both CPU and Memory, but you may change it should your needs be different. For some more documentation referencees, you may refer [here](https://github.com/loneil/domo-metabase-viewer/tree/master/docs) for historical templates and tutorials, or inspect the official Metabase documentation [here](https://www.metabase.com/docs/latest/).
+
+## Cleanup
+
+```sh
+export NAMESPACE=<YOURNAMESPACE>
+
+oc delete -n $NAMESPACE all,template,secret,pvc -l app=metabase
+```

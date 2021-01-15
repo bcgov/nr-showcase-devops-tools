@@ -2,21 +2,20 @@
 kind: Template
 apiVersion: v1
 labels:
-  app: "${NAME}"
   build: "${NAME}"
   template: "${NAME}-bc-template"
 metadata:
   name: "${NAME}"
 objects:
-  - kind: ImageStream
-    apiVersion: v1
+  - apiVersion: v1
+    kind: ImageStream
     metadata:
       name: "${NAME}"
     spec:
       lookupPolicy:
         local: false
-  - kind: BuildConfig
-    apiVersion: v1
+  - apiVersion: v1
+    kind: BuildConfig
     metadata:
       name: "${NAME}"
       labels:
@@ -24,7 +23,6 @@ objects:
     spec:
       completionDeadlineSeconds: 600
       failedBuildsHistoryLimit: 3
-      successfulBuildsHistoryLimit: 3
       output:
         to:
           kind: ImageStreamTag
@@ -57,8 +55,9 @@ objects:
               value: "${METABASE_VERSION}"
           from:
             kind: DockerImage
-            name: openjdk:8-jdk-alpine
+            name: docker.io/adoptopenjdk/openjdk11:alpine-jre
         type: Docker
+      successfulBuildsHistoryLimit: 3
       triggers:
         - type: ConfigChange
 parameters:
@@ -71,7 +70,7 @@ parameters:
     displayName: Metabase Version
     description: Version of Metabase to use
     required: true
-    value: v0.36.0
+    value: v0.37.6
   - name: VERSION
     displayName: Image version tag
     description: The version tag of the built image
