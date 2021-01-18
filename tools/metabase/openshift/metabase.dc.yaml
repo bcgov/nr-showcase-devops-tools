@@ -3,76 +3,28 @@ kind: Template
 apiVersion: v1
 labels:
   app: "${NAME}"
+  app.kubernetes.io/component: "${NAME}"
+  app.kubernetes.io/instance: "${NAME}"
+  app.kubernetes.io/managed-by: template
+  app.kubernetes.io/name: java
+  app.kubernetes.io/part-of: "${NAME}"
   template: "${NAME}-dc-template"
 metadata:
   name: "${NAME}"
 objects:
-  - kind: Secret
-    apiVersion: v1
-    metadata:
-      name: "${NAME}-secret"
-      annotations:
-        template.openshift.io/expose-password: "{.data['database-password']}"
-        as-copy-of: template.${NAME}-secret
-    stringData:
-      admin-email: "${ADMIN_EMAIL}"
-      admin-password: "${ADMIN_PASSWORD}"
-      admin-username: "${NAME}-admin"
-      database-password: "${DATABASE_PASSWORD}"
-      embedding-secret-key: "${EMBEDDING_SECRET_KEY}"
-  - kind: Service
-    apiVersion: v1
-    metadata:
-      name: "${NAME}"
-    spec:
-      ports:
-        - name: 3000-tcp
-          protocol: TCP
-          port: 3000
-          targetPort: 3000
-      selector:
-        app: "${NAME}"
-      type: ClusterIP
-      sessionAffinity: None
-  - kind: Route
-    apiVersion: v1
-    metadata:
-      name: "${NAME}"
-    spec:
-      host: "${NAME}-${NAMESPACE}.pathfinder.gov.bc.ca"
-      tls:
-        insecureEdgeTerminationPolicy: Redirect
-        termination: edge
-      path: "/"
-      to:
-        kind: Service
-        name: "${NAME}"
-      port:
-        targetPort: 3000-tcp
-      wildcardPolicy: None
   - apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: "${NAME}"
-      annotations:
-        volume.beta.kubernetes.io/storage-class: netapp-file-standard
-    spec:
-      accessModes:
-        - ReadWriteMany
-      resources:
-        requests:
-          storage: "${PVC_SIZE}"
-  - kind: DeploymentConfig
-    apiVersion: v1
+    kind: DeploymentConfig
     metadata:
       name: "${NAME}"
     spec:
       replicas: 1
-      strategy:
-        type: Recreate
+      revisionHistoryLimit: 10
       selector:
         app: "${NAME}"
         deploymentconfig: "${NAME}"
+      strategy:
+        type: Recreate
+        resources: {}
       template:
         metadata:
           name: "${NAME}"
@@ -81,11 +33,37 @@ objects:
             deploymentconfig: "${NAME}"
         spec:
           containers:
-            - command:
-                - bash
-                - "-c"
-                - cd /app && if [[ $PR_ENVIRONMENT == 'true' ]]; then tail -f /dev/null;
-                  else java -jar metabase.jar; fi
+            - name: metabase
+              image: "${IMAGE_REGISTRY}/${NAMESPACE}/${NAME}:${VERSION}"
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                tcpSocket:
+                  port: 3000
+                initialDelaySeconds: 10
+                timeoutSeconds: 1
+                failureThreshold: 3
+              ports:
+                - containerPort: 3000
+                  protocol: TCP
+              readinessProbe:
+                httpGet:
+                  path: "/"
+                  port: 3000
+                initialDelaySeconds: 10
+                timeoutSeconds: 1
+                failureThreshold: 3
+              resources:
+                requests:
+                  cpu: "${CPU_REQUEST}"
+                  memory: "${MEMORY_REQUEST}"
+                limits:
+                  cpu: "${CPU_LIMIT}"
+                  memory: "${MEMORY_LIMIT}"
+              startupProbe:
+                tcpSocket:
+                  port: 3000
+                timeoutSeconds: 1
+                failureThreshold: 12
               env:
                 - name: MB_DB_FILE
                   value: "/app/data/metabase.db"
@@ -100,48 +78,20 @@ objects:
                   value: 0.0.0.0
                 - name: MB_PASSWORD_COMPLEXITY
                   value: strong
-              image: image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}:${VERSION}
-              imagePullPolicy: IfNotPresent
-              livenessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: "/"
-                  port: 3000
-                initialDelaySeconds: 120
-                periodSeconds: 20
-                timeoutSeconds: 10
-              name: metabase
-              ports:
-                - containerPort: 3000
-                  protocol: TCP
-              readinessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: "/"
-                  port: 3000
-                initialDelaySeconds: 120
-                periodSeconds: 20
-                timeoutSeconds: 10
-              resources:
-                requests:
-                  cpu: "${CPU_REQUEST}"
-                  memory: "${MEMORY_REQUEST}"
-                limits:
-                  cpu: "${CPU_LIMIT}"
-                  memory: "${MEMORY_LIMIT}"
-              terminationMessagePath: "/dev/termination-log"
               volumeMounts:
                 - mountPath: "/app/data"
-                  name: "${NAME}-data"
+                  name: data
           dnsPolicy: ClusterFirst
           restartPolicy: Always
           volumes:
-            - name: "${NAME}-data"
+            - name: data
               persistentVolumeClaim:
                 claimName: "${NAME}"
       test: false
       triggers:
-        - imageChangeParams:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
             automatic: true
             containerNames:
               - metabase
@@ -149,25 +99,74 @@ objects:
               kind: ImageStreamTag
               name: "${NAME}:${VERSION}"
               namespace: "${NAMESPACE}"
-          type: ImageChange
-        - type: ConfigChange
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: "${NAME}"
+    spec:
+      accessModes:
+        - ReadWriteMany
+      storageClassName: "${DATA_PERSISTENT_VOLUME_CLASS}"
+      resources:
+        requests:
+          storage: "${DATA_VOLUME_CAPACITY}"
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${NAME}"
+    spec:
+      ports:
+        - name: 3000-tcp
+          port: 3000
+          protocol: TCP
+          targetPort: 3000
+      selector:
+        app: "${NAME}"
+        deploymentconfig: "${NAME}"
+      type: ClusterIP
+      sessionAffinity: None
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: "${NAME}"
+    spec:
+      host: "${PREFIX}${NAME}.${DOMAIN}"
+      path: "/"
+      port:
+        targetPort: 3000-tcp
+      tls:
+        insecureEdgeTerminationPolicy: Redirect
+        termination: edge
+      to:
+        kind: Service
+        name: "${NAME}"
+        weight: 100
+      wildcardPolicy: None
 parameters:
   - name: NAME
-    displayName: Name
     description: The name assigned to all of the objects defined in this template.
+    displayName: Name
     required: true
     value: metabase
+  - name: PREFIX
+    description: Optional prefix to describe instance of this deployment in the subdomain.
+    displayName: Prefix
+    required: false
+    value: ""
+  - name: DOMAIN
+    description: The base domain name of the cluster.
+    displayName: Base Domain
+    required: true
+    value: apps.silver.devops.gov.bc.ca
   - name: NAMESPACE
     description: Target namespace reference (i.e. '9f0fbe-dev')
     displayName: Namespace
     required: true
-  - name: PR_ENVIRONMENT
-    displayName: PR Based Environment
-    description:
-      A setting to turn off metabase in OpenShift namespaces where resources
-      need to be minimized due to duplication of applications (one for each Pull Request).  Setting
-      the value to 'true' will turn off metabase.
-    value: ""
+  - name: IMAGE_REGISTRY
+    description: The base docker registry
+    displayName: Docker Image Registry
+    required: true
+    value: image-registry.openshift-image-registry.svc:5000
   - name: VERSION
     description: A version used for the image tags
     displayName: Version
@@ -189,34 +188,12 @@ parameters:
     description: Maximum amount of memory allowed to use
     displayName: Memory Limit
     value: 1.5Gi
-  - name: PVC_SIZE
-    description: Amount of disk space needed for persistence
-    displayName: PVC Size
+  - name: DATA_VOLUME_CAPACITY
+    description: Volume space available for Data
+    displayName: Data Volume Capacity
     required: true
-    value: 2Gi
-  - name: ADMIN_EMAIL
-    displayName: Admin Email
-    description: The email associated with the metabase admin user
-    required: true
-  - name: ADMIN_PASSWORD
-    displayName: Admin Password
-    description:
-      The password for the metabase admin user. Requires 2 upper, 2 lower,
-      1 special, 1 numeric chars and minimum 8 char length
-    generate: expression
-    from: "[a-zA-Z0-9]{8}!@#$%^&_[a-zA-Z0-9]{8}"
-    required: true
-  - name: DATABASE_PASSWORD
-    displayName: Database Password
-    description:
-      A minimum 16 character password that is generated in the target database,
-      and then copied over into this field.
-    generate: expression
-    from: "[a-zA-Z0-9]{16}"
-    required: true
-  - name: EMBEDDING_SECRET_KEY
-    displayName: Embedding Secret Key
-    description: A key that is used to embed metabase screens from within a website
-    generate: expression
-    from: "[a-zA-Z0-9]{16}"
-    required: true
+    value: 1Gi
+  - name: DATA_PERSISTENT_VOLUME_CLASS
+    description: The storage class of the volume
+    displayName: Persistent Volume Class name
+    value: netapp-file-standard
