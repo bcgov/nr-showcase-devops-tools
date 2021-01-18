@@ -36,11 +36,17 @@ This will create a new Secret, and create or patch a Service, Route, Persistent 
 
 On OCP4, you must have NSPs available to allow specific pods to connect to other resources within the cluster. In our case, we will generally want the ability for metabase to establish database connections to databases potentially on different namespaces. Run the following template to add an NSP rule allowing Metabase to reach a target database.
 
+_Note: When your network connection must cross different namespaces, BOTH the source and destination namespaces must have the same NSP defined before the connection is permitted._
+
 ``` sh
 export NAMESPACE=<YOURNAMESPACE>
 export TARGET_NAMESPACE=<YOURTARGETNAMESPACE>
 
+# Run this if NAMESPACE and TARGET_NAMESPACE are the same
 oc process -n $NAMESPACE -f $BASE_URL/metabase.nsp.yaml -p NAMESPACE=$NAMESPACE -p TARGET_NAMESPACE=$TARGET_NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
+
+# Run this if NAMESPACE and TARGET_NAMESPACE are different
+oc process -n $NAMESPACE -f $BASE_URL/metabase.nsp.yaml -p NAMESPACE=$NAMESPACE -p TARGET_NAMESPACE=$TARGET_NAMESPACE -o yaml | tee >(oc apply -n $NAMESPACE -f -) >(oc apply -n $TARGET_NAMESPACE -f -) >/dev/null
 ```
 
 In the event your Metabase instance needs to connect to multiple databases, you may repeat this command for each different database.

@@ -15,7 +15,7 @@ objects:
   - kind: NetworkSecurityPolicy
     apiVersion: security.devops.gov.bc.ca/v1alpha1
     metadata:
-      name: "${NAME}-${TARGET_NAME}-${TARGET_INSTANCE}-readonly-${TARGET_NAMESPACE}-comms"
+      name: "${NAME}-${NAMESPACE}-${TARGET_NAME}-${TARGET_INSTANCE}-readonly-${TARGET_NAMESPACE}-comms"
     spec:
       description: |
         Allow metabase pods to open connections to patroni cluster pods in other namespaces
