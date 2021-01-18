@@ -190,7 +190,7 @@ parameters:
     value: 1.5Gi
   - name: DATA_VOLUME_CAPACITY
     description: Volume space available for Data
-    displayName: Data Volume Capacity (use M or G, not Mi or Gi)
+    displayName: Data Volume Capacity
     required: true
     value: 1Gi
   - name: DATA_PERSISTENT_VOLUME_CLASS
