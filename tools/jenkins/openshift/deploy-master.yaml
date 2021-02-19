@@ -10,6 +10,25 @@ metadata:
   creationTimestamp: null
   name: jenkins
 objects:
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-jenkins-build-prod
+  spec:
+    # Allow Jenkins builders to connect
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                deploymentconfig: jenkins-build-prod
+        ports:
+          - port: 8080
+            protocol: TCP
+          - port: 50000
+            protocol: TCP
+    podSelector:
+      matchLabels:
+        deploymentconfig: jenkins-prod
 - apiVersion: v1
   kind: Secret
   metadata:
@@ -36,12 +55,11 @@ objects:
 - apiVersion: v1
   kind: PersistentVolumeClaim
   metadata:
-    annotations:
-      volume.beta.kubernetes.io/storage-class: netapp-file-standard
     name: ${NAME}${SUFFIX}
   spec:
     accessModes:
     - ReadWriteOnce
+    storageClassName: netapp-file-standard
     resources:
       requests:
         storage: 1Gi
