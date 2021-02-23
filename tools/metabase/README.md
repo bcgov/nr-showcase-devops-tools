@@ -32,21 +32,16 @@ oc process -n $NAMESPACE -f $BASE_URL/metabase.dc.yaml -p NAMESPACE=$NAMESPACE -
 
 This will create a new Secret, and create or patch a Service, Route, Persistent Volume Claim, and Deployment Configuration. This Deployment Config has health checks built in, and handles image updates via Recreation strategy. A rolling update cannot work because the H2 database is locked by the old running pod and prevents the newer instance of Metabase from starting up. Also note that due to the H2 database constraint, this Metabase deployment cannot be highly available (aka have a replica count larger than 1).
 
-## NSP Setup
+## Network Policy Setup
 
-On OCP4, you must have NSPs available to allow specific pods to connect to other resources within the cluster. In our case, we will generally want the ability for metabase to establish database connections to databases potentially on different namespaces. Run the following template to add an NSP rule allowing Metabase to reach a target database.
-
-_Note: When your network connection must cross different namespaces, BOTH the source and destination namespaces must have the same NSP defined before the connection is permitted._
+On OCP4, you must have Network Policies defined to allow specific pods to connect to other resources within the cluster. In our case, we will generally want the ability for metabase to establish database connections to databases potentially on different namespaces. Run the following template to allow Metabase to reach a target database.
 
 ``` sh
-export NAMESPACE=<YOURNAMESPACE>
-export TARGET_NAMESPACE=<YOURTARGETNAMESPACE>
+export NAMESPACE=<YOURDBNAMESPACE>
+export NS_PREFIX=<YOURMETABASENAMESPACEPREFIX>
+export NS_ENV=<YOURMETABASENAMESPACEENV>
 
-# Run this if NAMESPACE and TARGET_NAMESPACE are the same
-oc process -n $NAMESPACE -f $BASE_URL/metabase.nsp.yaml -p NAMESPACE=$NAMESPACE -p TARGET_NAMESPACE=$TARGET_NAMESPACE -o yaml | oc apply -n $NAMESPACE -f -
-
-# Run this if NAMESPACE and TARGET_NAMESPACE are different
-oc process -n $NAMESPACE -f $BASE_URL/metabase.nsp.yaml -p NAMESPACE=$NAMESPACE -p TARGET_NAMESPACE=$TARGET_NAMESPACE -o yaml | tee >(oc apply -n $NAMESPACE -f -) >(oc apply -n $TARGET_NAMESPACE -f -) >/dev/null
+oc process -n $NAMESPACE -f metabase.np.yaml -p NS_PREFIX=$NS_PREFIX -p NS_ENV=$NS_ENV -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
 In the event your Metabase instance needs to connect to multiple databases, you may repeat this command for each different database.
