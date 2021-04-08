@@ -84,12 +84,12 @@ Once logged into the OpenShift console, go to your tools project.  Each oc comma
 oc project $tools
 ```
 
-### Apply Network Security Policies
+### Apply Network Policies
 
-On OCP4, Network Security Policies must be explicitly defined in order to permit network traffic. Before proceeding any further, ensure that the "generic" NSP rules are applied to the project. More details can be found [here](https://github.com/bcgov/nr-get-token/wiki/Network-Security-Policy#previous-security-model).
+On OCP4, Network Policies must be explicitly defined in order to permit network traffic. Before proceeding any further, ensure that the "generic" network policy rules are applied to the project. The following will ensure that Openshift ingress routes will be able to reach your pods.
 
 ```sh
-oc process -n $tools -f https://github.com/bcgov/nr-get-token/wiki/assets/nsp.yaml NAMESPACE=$tools | oc create -n $tools -f -
+oc process -n $tools -f https://raw.githubusercontent.com/wiki/bcgov/nr-get-token/assets/templates/default.np.yaml | oc create -n $tools -f -
 ```
 
 ### Add DockerHub Pull Credentials

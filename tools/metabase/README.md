@@ -59,13 +59,13 @@ In general, Metabase should take up very little CPU (<0.01 cores) and float betw
 ```sh
 export NAMESPACE=<YOURNAMESPACE>
 
-oc delete -n $NAMESPACE all,template,nsp,secret,pvc -l app=metabase
+oc delete -n $NAMESPACE all,template,networkpolicy,secret,pvc -l app=metabase
 ```
 
-_Note: If you had NSPs in different namespaces to permit cross-namespace DB access, you will need to run the following on those namespaces._
+_Note: If you had network policies in different namespaces to permit cross-namespace DB access, you will need to run the following on those namespaces._
 
 ```sh
 export NAMESPACE=<YOURNAMESPACE>
 
-oc delete -n $NAMESPACE nsp -l app=metabase
+oc delete -n $NAMESPACE networkpolicy -l app=metabase
 ```
