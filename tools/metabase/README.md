@@ -9,7 +9,7 @@ While Metabase does provide a Docker image [here](https://hub.docker.com/r/metab
 ``` sh
 export BASE_URL="https://raw.githubusercontent.com/bcgov/nr-showcase-devops-tools/master/tools/metabase/openshift"
 export NAMESPACE=<YOURNAMESPACE>
-export METABASE_VERSION=v0.37.6
+export METABASE_VERSION=v0.38.3
 
 oc process -n $NAMESPACE -f $BASE_URL/metabase.bc.yaml -p METABASE_VERSION=$METABASE_VERSION -o yaml | oc apply -n $NAMESPACE -f -
 ```
@@ -59,13 +59,13 @@ In general, Metabase should take up very little CPU (<0.01 cores) and float betw
 ```sh
 export NAMESPACE=<YOURNAMESPACE>
 
-oc delete -n $NAMESPACE all,template,nsp,secret,pvc -l app=metabase
+oc delete -n $NAMESPACE all,template,networkpolicy,secret,pvc -l app=metabase
 ```
 
-_Note: If you had NSPs in different namespaces to permit cross-namespace DB access, you will need to run the following on those namespaces._
+_Note: If you had network policies in different namespaces to permit cross-namespace DB access, you will need to run the following on those namespaces._
 
 ```sh
 export NAMESPACE=<YOURNAMESPACE>
 
-oc delete -n $NAMESPACE nsp -l app=metabase
+oc delete -n $NAMESPACE networkpolicy -l app=metabase
 ```
