@@ -20,6 +20,8 @@ This will create an ImageStream called `metabase`. This image is built on top of
 
 Once your metabase image has been successfully built, you can then deploy it in your project by using the following commands (replace anything in angle brackets with the correct value):
 
+*Note: We recommend the prefix have a dash at the end so that you get something like "app-metabase" instead of "appmetabase" as the domain.*
+
 ``` sh
 export ADMIN_EMAIL=NR.CommonServiceShowcase@gov.bc.ca
 export NAMESPACE=<YOURNAMESPACE>
@@ -41,7 +43,7 @@ export NAMESPACE=<YOURDBNAMESPACE>
 export NS_PREFIX=<YOURMETABASENAMESPACEPREFIX>
 export NS_ENV=<YOURMETABASENAMESPACEENV>
 
-oc process -n $NAMESPACE -f metabase.np.yaml -p NS_PREFIX=$NS_PREFIX -p NS_ENV=$NS_ENV -o yaml | oc apply -n $NAMESPACE -f -
+oc process -n $NAMESPACE -f $BASE_URL/metabase.np.yaml -p NS_PREFIX=$NS_PREFIX -p NS_ENV=$NS_ENV -o yaml | oc apply -n $NAMESPACE -f -
 ```
 
 In the event your Metabase instance needs to connect to multiple databases, you may repeat this command for each different database.
