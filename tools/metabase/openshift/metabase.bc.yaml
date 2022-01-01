@@ -70,7 +70,7 @@ parameters:
     displayName: Metabase Version
     description: Version of Metabase to use
     required: true
-    value: v0.38.3
+    value: v0.41.5
   - name: VERSION
     displayName: Image version tag
     description: The version tag of the built image
