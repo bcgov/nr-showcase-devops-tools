@@ -1,6 +1,6 @@
 ---
 kind: Template
-apiVersion: v1
+apiVersion: template.openshift.io/v1
 labels:
   app: "${NAME}"
   app.kubernetes.io/component: "${NAME}"
@@ -99,6 +99,23 @@ objects:
               kind: ImageStreamTag
               name: "${NAME}:${VERSION}"
               namespace: "${NAMESPACE}"
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: "allow-openshift-ingress-to-${NAME}"
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: ingress
+          ports:
+            - port: 3000
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app: "${NAME}"
+          deploymentconfig: "${NAME}"
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
@@ -130,7 +147,7 @@ objects:
     metadata:
       name: "${NAME}"
     spec:
-      host: "${PREFIX}${NAME}.${DOMAIN}"
+      host: "${PREFIX}-${NAME}.${DOMAIN}"
       path: "/"
       port:
         targetPort: 3000-tcp
